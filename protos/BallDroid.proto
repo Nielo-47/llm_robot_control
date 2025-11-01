@@ -1,0 +1,61 @@
+#VRML_SIM R2025a utf8
+# Describe the functionality of your PROTO here.
+# template language: javascript
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/sphero/bb8/protos/BB-8.proto"
+
+PROTO BallDroid [
+  field SFVec3f translation 0 0 0 # Is `Pose.translation`.
+  field SFRotation rotation 0 0 1 0 # Is `Pose.rotation`.
+  field SFString name "BB-8" # Is `Solid.name`.
+  field SFString controller "<generic>"
+  field MFString controllerArgs [] # Is `Robot.controllerArgs`.
+  field SFString window "<generic>"
+  field SFString customData "" # Is `Robot.customData`.
+  field SFBool supervisor FALSE # Is `Robot.supervisor`.
+  field SFBool synchronization TRUE # Is `Robot.synchronization`.
+  field SFString contactMaterial "bb-8" # Defines the `Solid.contactMaterial` for the robot parts.
+  field MFNode bodySlot [] # Extends the robot with new nodes in the body slot.
+  field SFFloat bodyRadius 0.25 # Defines the radius of the sphere which defines the robot body.
+  field SFFloat bodyMass 5.0 # Defines the mass of the robot body.
+  field MFNode headSlot [             # 👈 We add our camera here
+    Camera {
+      name "head_camera"
+      fieldOfView 1.2
+      width 640
+      height 480
+      near 0.01
+      far 10
+      translation 0 0.05 0.18   # move forward from head center
+      rotation 0 1 0 0          # no rotation (adjust if it looks backwards)         # adjust this to your liking
+    }
+  ]
+  field SFFloat headOffset 0.025 # Defines the distance between the body center and the head center.
+  field SFFloat headRadius 0.15 # Defines the radius of the sphere which defines the robot head.
+  field SFFloat headMass 1.0 # Defines the mass of the robot head.
+  field SFFloat weightMass 20.0 # Defines the mass of the robot body.
+  field SFFloat maxVelocity 8.72 # Defines the `RotationalMotor.maxVelocity` fields. Note: the real robot moves at 4.9 [mph].
+]
+{
+  BB-8 {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    controller IS controller
+    controllerArgs IS controllerArgs
+    window IS window
+    customData IS customData
+    supervisor IS supervisor
+    synchronization IS synchronization
+    contactMaterial IS contactMaterial
+    bodySlot IS bodySlot
+    bodyRadius IS bodyRadius
+    bodyMass IS bodyMass
+    headSlot IS headSlot              # ✅ our camera is passed here
+    headOffset IS headOffset
+    headRadius IS headRadius
+    headMass IS headMass
+    weightMass IS weightMass
+    maxVelocity IS maxVelocity
+  }
+}

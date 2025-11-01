@@ -1,0 +1,28 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
+EXTERNPROTO "../protos/BallDroid.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation -0.23607561315003114 0.23607761100136948 0.9426216984876398 1.6298557442089958
+  position -0.006419297884994122 -7.921114597938827 4.427768007170034
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 30 30
+  floorAppearance Parquetry {
+  }
+}
+BallDroid {
+  translation 0 0 -0.04154809489298973
+  name "BallDroid"
+  controller "droid_llm"
+}
