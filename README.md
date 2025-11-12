@@ -81,15 +81,15 @@ Define o cenário de simulação Webots contendo:
 
 ## Tecnologias Utilizadas
 
-| Componente | Versão | Função |
-|-----------|--------|--------|
-| Webots | R2025a | Simulador robótico com motor de física |
-| Python | 3.9+ | Linguagem de implementação |
-| PyTorch | Recente | Framework de deep learning |
-| Transformers | Recente | Biblioteca para acesso a modelos pré-treinados |
-| BLIP (Salesforce) | Base/Large | Modelo de visão e linguagem |
-| PIL/Pillow | Recente | Processamento de imagens |
-| NumPy | Recente | Operações numéricas |
+| Componente        | Versão     | Função                                         |
+| ----------------- | ---------- | ---------------------------------------------- |
+| Webots            | R2025a     | Simulador robótico com motor de física         |
+| Python            | 3.9+       | Linguagem de implementação                     |
+| PyTorch           | Recente    | Framework de deep learning                     |
+| Transformers      | Recente    | Biblioteca para acesso a modelos pré-treinados |
+| BLIP (Salesforce) | Base/Large | Modelo de visão e linguagem                    |
+| PIL/Pillow        | Recente    | Processamento de imagens                       |
+| NumPy             | Recente    | Operações numéricas                            |
 
 ## Dependências
 
