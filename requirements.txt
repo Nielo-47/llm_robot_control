@@ -1,0 +1,6 @@
+pydantic
+pillow
+langchain
+langchain-ollama
+langgraph
+numpy
