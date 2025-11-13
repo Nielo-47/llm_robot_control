@@ -9,12 +9,12 @@ warnings.filterwarnings("ignore")
 
 
 class Droid:
-    def __init__(self, vision_model="riven/smolvlm", navigation_model="gemma3:1b-it-qat"):
+    def __init__(self):
         self.robot = Robot()
         self.timestep = int(self.robot.getBasicTimeStep())
         self.wheels = Wheels(self.robot, max_speed=6.28)
         self.camera = Camera(self.robot, self.timestep)
-        self.model = VisionLanguageModel(vision_model=vision_model, navigation_model=navigation_model)
+        self.model = VisionLanguageModel()
 
         # Current command to execute (starts with STOP)
         self.current_command = RobotDecision(direction="STOP", speed="SLOW", reason="Initializing")
@@ -26,7 +26,9 @@ class Droid:
         self.is_processing = False
         self.vlm_thread = None
 
-        print(f"Using Ollama models: Vision - {vision_model}, Navigation - {navigation_model}")
+        # print(
+        #     f"Using Ollama models: Vision - {self.model.vision_model.name}, Navigation - {self.model.navigation_model.name}"
+        # )
 
     def process_vlm_thread(self, image):
         """Background thread to process VLM decision"""
