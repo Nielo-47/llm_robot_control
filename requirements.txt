@@ -4,3 +4,5 @@ langchain
 langchain-ollama
 langgraph
 numpy
+torch 
+transformers
