@@ -17,7 +17,12 @@ class Wheels:
         self.back_left = robot.getDevice("back_left_wheel_joint")
         self.back_right = robot.getDevice("back_right_wheel_joint")
 
-        for wheel in [self.front_left, self.front_right, self.back_left, self.back_right]:
+        for wheel in [
+            self.front_left,
+            self.front_right,
+            self.back_left,
+            self.back_right,
+        ]:
             wheel.setPosition(float("inf"))
             wheel.setVelocity(0.0)
 
@@ -57,7 +62,9 @@ class Wheels:
                 "STOP": "⏸",
                 "ROAM": "◉",
             }
-            print(f"{arrows.get(command.direction, '?')} Executing: {command.direction} at {command.speed} speed")
+            print(
+                f"{arrows.get(command.direction, '?')} Executing: {command.direction} at {command.speed} speed"
+            )
             self.last_executed_command = current_command
 
     def get_speed_multiplier(self, speed):
@@ -75,6 +82,13 @@ class Wheels:
         self.front_right.setVelocity(fr)
         self.back_left.setVelocity(bl)
         self.back_right.setVelocity(br)
+
+    def stop(self):
+        """Emergency stop"""
+        self.front_left.setVelocity(0)
+        self.front_right.setVelocity(0)
+        self.back_left.setVelocity(0)
+        self.back_right.setVelocity(0)
 
 
 class Camera:
