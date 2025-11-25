@@ -1,9 +1,25 @@
 from controller import Robot
-from vlm import RobotDecision
 import numpy as np
 from PIL import Image
 import base64
 import io
+
+
+def image_to_base64(image, size=(512, 512), quality=100):
+    """Convert PIL Image to base64 (resized JPEG)"""
+    img = image.copy()
+    img = img.resize(size)
+    buffered = io.BytesIO()
+    img.save(buffered, format="JPEG", quality=quality)
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+
+class RobotDecision:
+    """Decisão de navegação do robô (standalone para evitar import circular)"""
+    def __init__(self, direction: str, speed: str, reason: str):
+        self.direction = direction
+        self.speed = speed
+        self.reason = reason
 
 
 class Wheels:
@@ -21,7 +37,7 @@ class Wheels:
             wheel.setPosition(float("inf"))
             wheel.setVelocity(0.0)
 
-    def execute_command(self, command: RobotDecision, force_print=False):
+    def execute_command(self, command, force_print=False):
         """Execute movement based on compass direction and speed"""
         speed_mult = self.get_speed_multiplier(command.speed)
         s = self.max_speed * speed_mult
@@ -65,11 +81,23 @@ class Wheels:
         return {"SLOW": 0.3, "MEDIUM": 0.6, "FAST": 1.0}.get(speed, 0.6)
 
     def set_mecanum_velocity(self, vx, vy, omega):
-        """Set mecanum wheel velocities"""
+        """Set mecanum wheel velocities for omnidirectional movement
+        
+        Mecanum wheel configuration:
+        - vx: forward/backward velocity (positive = forward)
+        - vy: left/right strafe velocity (positive = right)
+        - omega: rotation velocity (positive = counter-clockwise)
+        
+        Standard mecanum formula:
+        FL = vx - vy - omega
+        FR = vx + vy + omega  
+        BL = vx + vy - omega
+        BR = vx - vy + omega
+        """
         fl = vx - vy - omega
         fr = vx + vy + omega
         bl = vx + vy - omega
-        br = vx + vy + omega
+        br = vx - vy + omega  # CORRIGIDO: era vx + vy + omega
 
         self.front_left.setVelocity(fl)
         self.front_right.setVelocity(fr)
@@ -92,16 +120,12 @@ class Camera:
         width = self.camera.getWidth()
         height = self.camera.getHeight()
         image_data = self.camera.getImage()
+        
+        if image_data is None:
+            return None
+            
         image = np.frombuffer(image_data, np.uint8).reshape((height, width, 4))
         image = image[:, :, [2, 1, 0]]
         pil = Image.fromarray(image)
 
-        return self.image_to_base64(pil)
-
-    def image_to_base64(self, image, size=(512, 512), quality=100):
-        """Convert PIL Image to base64 (resized JPEG)"""
-        img = image.copy()
-        img = img.resize(size)
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=quality)
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return pil  # Retorna PIL Image, não base64

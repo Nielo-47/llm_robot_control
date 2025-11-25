@@ -1,7 +1,7 @@
 import asyncio
 from pydantic import BaseModel, Field
 from langchain_ollama import ChatOllama
-from typing import Literal, TypedDict, List
+from typing import Literal, TypedDict, List, Optional
 from langgraph.graph import StateGraph, START, END
 from transformers import AutoProcessor, AutoModelForVision2Seq
 import torch
@@ -50,6 +50,8 @@ class RobotState(TypedDict):
     decisions: List[RobotDecision]  # Navigation decisions from Gemma3
     current_image: str  # Current image being processed
     current_description: str  # Current scene description
+    custom_vision_prompt: Optional[str]  # Custom prompt for vision model
+    custom_navigation_prompt: Optional[str]  # Custom prompt for navigation model
 
 
 class VisionLanguageModel:
@@ -71,7 +73,7 @@ class VisionLanguageModel:
         self.navigation_model = ChatOllama(
             model=navigation_model,
             ollama_url="http://localhost:11434",
-            temperature=0,
+            temperature=0.3,  # Aumentado de 0 para dar mais criatividade
             num_ctx=512,
         ).with_structured_output(RobotDecision)
 
@@ -82,6 +84,8 @@ class VisionLanguageModel:
             "decisions": [],
             "current_image": "",
             "current_description": "",
+            "custom_vision_prompt": None,
+            "custom_navigation_prompt": None,
         }
         self.graph = self.generate_graph()
         print("✅ VisionLanguageModel initialized.")
@@ -99,13 +103,16 @@ class VisionLanguageModel:
         img.thumbnail((320, 320))
         image = img
 
+        # Use custom prompt if provided, otherwise use default
+        vision_prompt = state.get("custom_vision_prompt") or VISION_PROMPT
+
         # Build message prompt + image
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": image},  # placeholder
-                    {"type": "text", "text": VISION_PROMPT},
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": vision_prompt},
                 ],
             }
         ]
@@ -118,7 +125,7 @@ class VisionLanguageModel:
         ).to(DEVICE)
 
         # Generate output text
-        generated_ids = self.vision_model.generate(**inputs, max_new_tokens=64)
+        generated_ids = self.vision_model.generate(**inputs, max_new_tokens=128)  # Aumentado de 64
         generated_text = self.vision_processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
         if not generated_text:
@@ -140,9 +147,14 @@ class VisionLanguageModel:
             recent_decisions = state["decisions"][-3:]
             decision_history = "\n".join([f"- {d.direction} at {d.speed}: {d.reason}" for d in recent_decisions])
 
+        # Use custom prompt if provided, otherwise use default
+        navigation_prompt_template = state.get("custom_navigation_prompt") or NAVIGATION_PROMPT
+
         # Create navigation prompt with scene description
-        prompt = NAVIGATION_PROMPT.format(
-            decisions=decision_history, scene_description=state["current_description"], num_images=len(state["images"])
+        prompt = navigation_prompt_template.format(
+            decisions=decision_history, 
+            scene_description=state["current_description"], 
+            num_images=len(state["images"])
         )
 
         # Get structured navigation decision
@@ -170,12 +182,25 @@ class VisionLanguageModel:
 
         return graph.compile()
 
-    async def generate_command(self, new_image: str) -> RobotDecision:
-        """Generate a movement command using two-stage processing"""
+    async def generate_command(
+        self, 
+        new_image: str, 
+        custom_vision_prompt: Optional[str] = None,
+        custom_navigation_prompt: Optional[str] = None
+    ) -> RobotDecision:
+        """Generate a movement command using two-stage processing
+        
+        Args:
+            new_image: Base64 encoded image
+            custom_vision_prompt: Optional custom prompt for vision analysis
+            custom_navigation_prompt: Optional custom prompt for navigation decision
+        """
 
         # Add new image to persistent state
         self.state["images"].append(new_image)
         self.state["current_image"] = new_image
+        self.state["custom_vision_prompt"] = custom_vision_prompt
+        self.state["custom_navigation_prompt"] = custom_navigation_prompt
 
         # Trim history if needed
         if len(self.state["images"]) > self.max_history:
@@ -203,6 +228,8 @@ class VisionLanguageModel:
             "decisions": [],
             "current_image": "",
             "current_description": "",
+            "custom_vision_prompt": None,
+            "custom_navigation_prompt": None,
         }
 
 
