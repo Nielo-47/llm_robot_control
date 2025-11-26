@@ -6,104 +6,101 @@ import base64
 import io
 import math
 
-from controller import Robot
-from vlm import RobotDecision
+WHEEL_RADIUS = 0.063
+DIST_TO_CENTER = 0.1826
+
 import math
+
+WHEEL_RADIUS = 0.063
+DIST_TO_CENTER = 0.1826
 
 
 class Wheels:
-    def __init__(self, robot: Robot, max_speed: float = 6.28):
+    def __init__(self, robot, max_speed=6.28):
         self.robot = robot
         self.max_speed = max_speed
         self.last_executed_command = None
 
-        # Robotino3 has 3 omnidirectional wheels at 120° angles
-        self.wheel_0 = robot.getDevice("wheel0_joint")  # Front
-        self.wheel_1 = robot.getDevice("wheel1_joint")  # Back-left
-        self.wheel_2 = robot.getDevice("wheel2_joint")  # Back-right
+        self.wheel_0 = robot.getDevice("wheel0_joint")
+        self.wheel_1 = robot.getDevice("wheel1_joint")
+        self.wheel_2 = robot.getDevice("wheel2_joint")
 
-        for wheel in [self.wheel_0, self.wheel_1, self.wheel_2]:
-            wheel.setPosition(float("inf"))
-            wheel.setVelocity(0.0)
+        for w in (self.wheel_0, self.wheel_1, self.wheel_2):
+            w.setPosition(float("inf"))
+            w.setVelocity(0.0)
 
-    def execute_command(self, command: RobotDecision, force_print=False):
-        """Execute movement based on compass direction and speed"""
+        self.actual = [0.0, 0.0, 0.0]  # vx, vy, omega
+        self.target = [0.0, 0.0, 0.0]
+        self.max_accel = [10.0, 6.0, 20.0]
+
+    def execute_command(self, command, force_print=False):
         speed_mult = self.get_speed_multiplier(command.speed)
         s = self.max_speed * speed_mult
 
-        # Convert compass directions to vx, vy, omega
-        # N = camera forward, E = camera right, W = camera left, S = camera backward
+        # --- NEW SIMPLIFIED MAPPING ---
         direction_vectors = {
-            "N": (s, 0, 0),  # Forward (toward camera view)
-            "S": (-s, 0, 0),  # Backward (away from camera view)
-            "E": (0, -s, 0),  # Right (strafe right while facing forward)
-            "W": (0, s, 0),  # Left (strafe left while facing forward)
-            "NE": (s * 0.7, -s * 0.7, 0),  # Forward-right diagonal
-            "NW": (s * 0.7, s * 0.7, 0),  # Forward-left diagonal
-            "SE": (-s * 0.7, -s * 0.7, 0),  # Backward-right diagonal
-            "SW": (-s * 0.7, s * 0.7, 0),  # Backward-left diagonal
+            "FORWARD": (s, 0, 0),
+            "BACKWARD": (-s, 0, 0),
+            "LEFT": (0, s, 0),
+            "RIGHT": (0, -s, 0),
             "STOP": (0, 0, 0),
-            "ROAM": (s * 0.3, 0, 0),  # Slow forward exploration
         }
 
         vx, vy, omega = direction_vectors.get(command.direction, (0, 0, 0))
-        self.set_omnidirectional_velocity(vx, vy, omega)
 
-        # Only print if command changed or force_print is True
+        self.set_target_speeds(vx, vy, omega)
+        self.accelerate()
+
         if (
             force_print
             or self.last_executed_command != command.direction + command.speed
         ):
-            arrows = {
-                "N": "↑",
-                "S": "↓",
-                "E": "→",
-                "W": "←",
-                "NE": "↗",
-                "NW": "↖",
-                "SE": "↘",
-                "SW": "↙",
-                "STOP": "⏸",
-                "ROAM": "◉",
-            }
-            print(
-                f"{arrows.get(command.direction, '?')} {command.direction} at {command.speed}"
-            )
             self.last_executed_command = command.direction + command.speed
+            print(f"{command.direction} at {command.speed}")
 
     def get_speed_multiplier(self, speed):
-        """Convert speed name to multiplier"""
         return {"SLOW": 0.3, "MEDIUM": 0.6, "FAST": 1.0, "STOP": 0.0}.get(speed, 0.6)
 
-    def set_omnidirectional_velocity(self, vx, vy, omega):
-        """
-        Set omnidirectional wheel velocities for Robotino3.
-        Wheels are arranged at 120° angles:
-        - Wheel 0: 0° (front)
-        - Wheel 1: 120° (back-left)
-        - Wheel 2: 240° (back-right)
-        """
-        # Wheel positions in radians
-        wheel_angles = [0, 2 * math.pi / 3, 4 * math.pi / 3]
-        wheel_radius = 0.05  # Approximate radius in meters
+    # -----------------------------
+    # C-LIKE MOVEMENT LOGIC BELOW
+    # -----------------------------
 
-        velocities = []
-        for angle in wheel_angles:
-            # Project velocity onto wheel direction
-            v_wheel = vx * math.cos(angle) + vy * math.sin(angle)
-            # Add rotational component (perpendicular to wheel)
-            v_wheel += omega * wheel_radius
-            velocities.append(v_wheel)
+    def set_target_speeds(self, vx, vy, omega):
+        self.target[0] = vx
+        self.target[1] = vy
+        self.target[2] = omega
 
-        self.wheel_0.setVelocity(velocities[0])
-        self.wheel_1.setVelocity(velocities[1])
-        self.wheel_2.setVelocity(velocities[2])
+    def accelerate(self):
+        timestep = self.robot.getBasicTimeStep() / 1000.0
+
+        maxSteps = 1
+        for i in range(3):
+            diff = abs(self.target[i] - self.actual[i])
+            steps = diff / (self.max_accel[i] * timestep)
+            if steps > maxSteps:
+                maxSteps = steps
+
+        for i in range(3):
+            self.actual[i] += (self.target[i] - self.actual[i]) / maxSteps
+
+        self.apply_speeds(*self.actual)
+
+    def apply_speeds(self, vx, vy, omega):
+        vx /= WHEEL_RADIUS
+        vy /= WHEEL_RADIUS
+        omega *= DIST_TO_CENTER / WHEEL_RADIUS
+
+        w0 = vy - omega
+        w1 = -math.sqrt(0.75) * vx - 0.5 * vy - omega
+        w2 = math.sqrt(0.75) * vx - 0.5 * vy - omega
+
+        self.wheel_0.setVelocity(w0)
+        self.wheel_1.setVelocity(w1)
+        self.wheel_2.setVelocity(w2)
 
     def stop(self):
-        """Emergency stop"""
-        self.wheel_0.setVelocity(0)
-        self.wheel_1.setVelocity(0)
-        self.wheel_2.setVelocity(0)
+        self.set_target_speeds(0, 0, 0)
+        self.accelerate()
 
 
 class Camera:

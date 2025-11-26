@@ -9,7 +9,7 @@ from config import NAVIGATION_MODEL_NAME, GOOGLE_API_KEY, NAVIGATION_PROMPT
 
 
 class RobotDecision(BaseModel):
-    direction: Literal["N", "S", "E", "W", "NE", "NW", "SE", "SW", "STOP", "ROAM"]
+    direction: Literal["FORWARD", "LEFT", "RIGHT", "BACWARDS", "STOP"]
     speed: Literal["SLOW", "MEDIUM", "FAST", "STOP"]
     reason: str
 

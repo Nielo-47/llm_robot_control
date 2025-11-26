@@ -5,12 +5,8 @@ load_dotenv()
 
 DEVICE = "cpu"
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-VISION_MODEL_NAME = "HuggingFaceTB/SmolVLM-256M-Instruct"
-REFLEX_MODEL_NAME = "gemma3:1b"
 NAVIGATION_MODEL_NAME = "gemini-2.5-flash"
 
-
-VISION_PROMPT = """Describe the image in detail. After this, list the objects you see grouped by FAR, NEAR, and VERY NEAR."""
 
 NAVIGATION_PROMPT = """
 You are an autonomous robot navigation system analyzing a camera image from your FRONT-FACING CAMERA. Your PRIMARY MISSION is to locate and navigate to a GREEN PLANT.
@@ -89,12 +85,4 @@ Provide your decision with:
 - **reason**: Concise explanation (1-2 sentences) stating what you see in the camera and why this action makes sense
 
 Remember: The camera shows what's ahead (North). Move toward what you want to reach, away from what you want to avoid.
-"""
-
-REFLEX_PROMPT = """You are a robot. Based on the scene description of what the robot is seeing, is there an IMMEDIATE danger or obstacle requiring emergency stop to the robot?
-Scene: {description}
-Answer: 
-
-DECISION: 'DANGER' or 'SAFE'.
-REASON: brief explanation
 """
