@@ -1,5 +1,4 @@
 from controller import Robot
-from vlm import RobotDecision
 import numpy as np
 from PIL import Image
 import base64
@@ -118,16 +117,12 @@ class Camera:
         width = self.camera.getWidth()
         height = self.camera.getHeight()
         image_data = self.camera.getImage()
+
+        if image_data is None:
+            return None
+
         image = np.frombuffer(image_data, np.uint8).reshape((height, width, 4))
         image = image[:, :, [2, 1, 0]]
         pil = Image.fromarray(image)
 
-        return self.image_to_base64(pil)
-
-    def image_to_base64(self, image, size=(512, 512), quality=100):
-        """Convert PIL Image to base64 (resized JPEG)"""
-        img = image.copy()
-        img = img.resize(size)
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG", quality=quality)
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return pil  # Retorna PIL Image, não base64
