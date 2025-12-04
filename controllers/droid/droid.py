@@ -9,13 +9,11 @@ class Droid:
         self.robot = Robot()
         self.timestep = int(self.robot.getBasicTimeStep())
 
-        self.wheels = Wheels(self.robot, max_speed=6.28)
+        self.wheels = Wheels(self.robot, max_speed=1)
         self.camera = Camera(self.robot, self.timestep)
         self.controller = GeminiRobotController()
 
-        self.current_command = RobotDecision(
-            direction="STOP", speed="SLOW", reason="Initializing"
-        )
+        self.current_command = RobotDecision(angle=0, distance=0, reason="Initializing")
         self.is_processing = False
 
     def process_frame_async(self, image_b64, frame_num):
@@ -28,13 +26,13 @@ class Droid:
             if result:
                 self.current_command = result
                 print(
-                    f"✅ [{frame_num}] {result.direction} {result.speed} - {result.reason}"
+                    f"✅ [{frame_num}] {result.angle} {result.distance} - {result.reason}"
                 )
 
         except Exception as e:
             print(f"❌ [{frame_num}] {e}")
             self.current_command = RobotDecision(
-                direction="STOP", speed="SLOW", reason="Error"
+                angle="STOP", distance="SLOW", reason="Error"
             )
         finally:
             self.is_processing = False
@@ -51,6 +49,7 @@ class Droid:
         try:
             while self.robot.step(self.timestep) != -1:
                 frame_count += 1
+                self.wheels.update(force_print=False)
 
                 # Process every 10th frame
                 if not self.is_processing and frame_count % 10 == 0:

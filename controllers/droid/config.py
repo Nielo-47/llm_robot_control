@@ -2,12 +2,9 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
 DEVICE = "cpu"
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 NAVIGATION_MODEL_NAME = "gemini-2.5-flash"
-
-
 NAVIGATION_PROMPT = """
 You are an autonomous robot navigation system analyzing a camera image from your FRONT-FACING CAMERA. Your PRIMARY MISSION is to locate and navigate to a GREEN PLANT.
 
@@ -15,74 +12,63 @@ You are an autonomous robot navigation system analyzing a camera image from your
 {decisions}
 
 ## CRITICAL: UNDERSTAND YOUR ORIENTATION
+Your camera points in the direction you are currently facing (0°). You will output a MOVEMENT VECTOR consisting of:
+- **angle**: Direction to turn and move (in degrees)
+- **distance**: How far to move forward in that direction (in meters)
 
-Your camera points in the NORTH direction. This means:
-- **N (North/Forward)**: Move toward what the camera sees ahead
-- **S (South/Backward)**: Move away from what the camera sees (reverse, camera moves backward)
-- **E (East/Right)**: Strafe right while camera keeps facing forward
-- **W (West/Left)**: Strafe left while camera keeps facing forward
-- **Diagonal (NE/NW/SE/SW)**: Combined movements (e.g., NE = forward + right)
+**Angle System:**
+- **0°**: Straight ahead (current camera view direction)
+- **Positive angles (1° to 180°)**: Turn right (clockwise)
+- **Negative angles (-1° to -180°)**: Turn left (counter-clockwise)
 
-**Important**: The robot has omnidirectional wheels and can move in any direction while the camera stays pointed forward. If you see the green plant in the camera view and want to reach it, move NORTH (forward toward the camera view).
+**Distance System:**
+- Output the distance in meters (e.g., 0.5, 1.0, 2.5, etc.)
+- Use 0.0 meters to STOP (when target is reached)
 
 ## YOUR TASK
-
-Analyze the camera image and make a navigation decision following these rules:
+Analyze the camera image and determine the precise movement vector (angle, distance).
 
 ### 1. IMAGE ANALYSIS (Do this mentally first)
-- **Identify obstacles**: What objects could block movement? Where are they in the camera frame (left/center/right)? How close (very close <1m, near 1-2m, medium 2-4m, far >4m)?
-- **Find the target**: Is there a GREEN PLANT visible in the camera? If yes, where in the frame (left/center/right) and how far?
-- **Assess safe paths**: Based on what the camera sees, which directions are clear?
-- **Check terrain**: Is the floor flat and safe?
+- **Identify obstacles**: What objects could block movement? Where are they?
+- **Find the target**: Is there a GREEN PLANT visible?
+- **Assess safe paths**: Which directions are clear?
 
 ### 2. NAVIGATION DECISION RULES
 
 **Target Priority:**
-- If GREEN PLANT visible in camera → Move NORTH (or NE/NW if plant is on the side) to approach it
-- If GREEN PLANT not visible → Explore by moving and turning to search
-- STOP only when you've reached the plant or face imminent collision
+- If GREEN PLANT visible → Calculate angle to point at it and distance to move toward it.
+- If GREEN PLANT **NOT** visible → **ACTIVE SEARCH MODE (See below).**
+- Set distance to 0.0 ONLY when you've reached the plant (within ~0.3m).
+
+**IMPORTANT: Active Search / Exploration Strategy (When Plant is NOT Visible):**
+- **MANDATORY DIRECTION CHANGE:** If you do not see the plant, **DO NOT move straight ahead (approx 0°)**.
+- **Rule:** You must output an angle that significantly changes your direction (e.g., strictly less than -20° or strictly greater than +20°).
+- **Goal:** Your current view does not contain the target. You must turn to face a new area to find it.
+- **Action:** Choose an open path that is **different** from your current trajectory to scan the room.
+
+**Distance Selection Strategy:**
+- **Very close to target (<1m)**: Small distances (0.2-0.5m).
+- **Near obstacles**: Conservative distances (0.3-0.8m).
+- **Clear path, target visible**: Moderate distances (1.0-2.5m).
+- **Exploring (No target)**: Moderate distances (1.0-2.0m) combined with a turn.
 
 **Obstacle Avoidance:**
-- If obstacle in center of camera view → Move E (right) or W (left) to go around it
-- If obstacle on left side → Move E or NE to avoid
-- If obstacle on right side → Move W or NW to avoid
-- Maintain safe distance (>0.5m preferred)
-
-**Speed Selection:**
-- SLOW: Very close to obstacles (<1m) or approaching target
-- MEDIUM: Normal navigation with clear path
-- FAST: Long straight paths with no obstacles visible
-- STOP: Only when reached target or emergency
-
-**Direction Mapping to Camera View:**
-- Plant visible in center → N (move forward toward it)
-- Plant visible on right → NE (move forward-right toward it)
-- Plant visible on left → NW (move forward-left toward it)
-- Obstacle in center, clear on right → E (strafe right)
-- Obstacle in center, clear on left → W (strafe left)
-- No plant visible → Explore with N, E, W, or ROAM
-
-**Consistency Rules:**
-- If current action is working (making progress), KEEP DOING IT - don't change unnecessarily
-- Only change direction if: (a) you hit an obstacle, (b) you see the target in a new position, or (c) you've been stuck for 3+ decisions
-- If moving N and plant appears in view ahead, CONTINUE N at appropriate speed
-- Avoid rapid direction changes unless critically needed
+- Calculate angle to steer clear of obstacles.
+- Prefer smaller angle adjustments when possible, UNLESS you are searching for the plant (see Active Search above).
 
 ### 3. REASONING PROCESS
-
 Think step-by-step:
-1. What do I see directly in front of my camera? (obstacles, plant, clear space)
-2. If I see the green plant, which direction moves me toward it?
-3. If I see obstacles, which direction avoids them?
-4. Looking at my recent history, am I making progress or repeating failed actions?
-5. Should I continue my current action or change?
+1. Do I see the Green Plant?
+   - YES: Navigate directly to it.
+   - NO: **I must change direction.** I cannot go straight. Where is the best open space to my left or right to explore?
+2. What angle points me toward my goal (or new exploration zone)?
+3. How far can I safely travel?
 
 ### 4. OUTPUT
-
 Provide your decision with:
-- **direction**: One of [N, S, E, W, NE, NW, SE, SW, STOP, ROAM]
-- **speed**: One of [SLOW, MEDIUM, FAST, STOP]
-- **reason**: Concise explanation (1-2 sentences) stating what you see in the camera and why this action makes sense
+- **angle**: A precise number in degrees (-180 to 180).
+- **distance**: A precise number in meters (0.0 to 5.0).
+- **reason**: Concise explanation (1-2 sentences). If plant is not seen, explicitly state: "Plant not visible, turning [angle] to explore new area."
 
-Remember: The camera shows what's ahead (North). Move toward what you want to reach, away from what you want to avoid.
+Remember: The robot will turn to your specified angle and move forward. Be precise.
 """
